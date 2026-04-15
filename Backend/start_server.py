@@ -19,7 +19,7 @@ if sys.platform == 'win32':
     os.environ['PYTHONIOENCODING'] = 'utf-8'
 
 # Load environment variables
-load_dotenv()
+load_dotenv(os.path.join(os.path.dirname(__file__), '.env'))
 
 # Add the current directory to Python path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -35,7 +35,7 @@ if __name__ == '__main__':
     print(f"Server will run on: http://localhost:{port}")
     print(f"Debug mode: {debug}")
     print(f"Health check: http://localhost:{port}/api/health")
-    print(f"Questions API: http://localhost:{port}/api/questions/<interview_type>/<skill>")
+    print(f"Mock interview API: http://localhost:{port}/api/mock-interview/questions")
     print("=" * 60)
     
     app.run(host='0.0.0.0', port=port, debug=debug, use_reloader=False)

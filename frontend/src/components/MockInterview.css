@@ -125,6 +125,146 @@
   gap: 1rem;
 }
 
+.role-selection-layout {
+  display: grid;
+  grid-template-columns: 1.6fr 1fr;
+  gap: 1rem;
+  align-items: start;
+}
+
+.role-search-wrapper {
+  width: 100%;
+}
+
+.role-search-input {
+  margin-bottom: 0.25rem;
+}
+
+.job-roles-sidebar {
+  border: 1px solid #d1d5db;
+  border-radius: 10px;
+  background: #f8fafc;
+  padding: 1rem;
+  display: none;
+}
+
+.job-roles-sidebar.visible {
+  display: block;
+}
+
+.job-roles-sidebar h4 {
+  margin: 0 0 0.75rem;
+  font-size: 1rem;
+  color: #1f2937;
+}
+
+.job-roles-sidebar ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.job-roles-sidebar li {
+  list-style: none;
+}
+
+.job-roles-sidebar-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  color: #374151;
+  font-size: 0.95rem;
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+  border-radius: 8px;
+  padding: 0.5rem 0.65rem;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.2s ease;
+}
+
+.job-roles-sidebar-item:hover {
+  border-color: var(--primary-color);
+  background: #f1f5f9;
+}
+
+.job-roles-sidebar-item.selected {
+  border-color: var(--primary-color);
+  background: rgba(46, 134, 171, 0.12);
+}
+
+.job-roles-sidebar-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--role-color, var(--primary-color));
+  flex-shrink: 0;
+}
+
+.job-roles-empty {
+  margin: 0.8rem 0 0;
+  color: #6b7280;
+  font-size: 0.9rem;
+}
+
+.role-search-bar-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.65rem;
+  align-items: center;
+}
+
+.role-search-input-pattern {
+  margin-bottom: 0;
+}
+
+.role-search-button {
+  border: none;
+  background: #f97316;
+  color: #fff;
+  border-radius: 10px;
+  padding: 0.8rem 1.1rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.job-roles-pattern-panel {
+  margin-top: 0.5rem;
+}
+
+.job-roles-pattern-panel h4 {
+  margin: 0 0 0.9rem;
+  font-size: 2rem;
+  font-weight: 700;
+  color: #111827;
+}
+
+.job-roles-chip-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.job-role-chip {
+  border: 1px solid #e5e7eb;
+  background: #f3f4f6;
+  color: #4b5563;
+  border-radius: 12px;
+  padding: 0.55rem 0.95rem;
+  font-size: 0.95rem;
+  cursor: pointer;
+}
+
+.job-role-chip.selected {
+  border-color: #2563eb;
+  background: #2563eb;
+  color: #ffffff;
+}
+
 .role-option,
 .interview-type-option {
   display: flex;
@@ -1229,6 +1369,22 @@
   .form-actions .form-button {
     width: 100%;
     min-height: 48px;
+  }
+
+  .role-selection-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .role-search-bar-row {
+    grid-template-columns: 1fr;
+  }
+
+  .role-search-button {
+    width: 100%;
+  }
+
+  .job-roles-pattern-panel h4 {
+    font-size: 1.6rem;
   }
 
   .error-message {

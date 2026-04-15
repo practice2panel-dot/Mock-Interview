@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { 
   ArrowLeft, 
   Mic, 
@@ -23,13 +22,16 @@ import { jobRoles } from '../jobRolesConfig';
 import './MockInterview.css';
 
 const MockInterview = () => {
-  const navigate = useNavigate();
   // Form state
   const [showForm, setShowForm] = useState(true);
   const [candidateName, setCandidateName] = useState('');
   const [selectedRole, setSelectedRole] = useState('');
   const [selectedInterviewType, setSelectedInterviewType] = useState('');
   const [currentStep, setCurrentStep] = useState('name'); // 'name' | 'role' | 'type'
+  const [roleSearchTerm, setRoleSearchTerm] = useState('');
+  const [showRoleSuggestions, setShowRoleSuggestions] = useState(false);
+  const [interviewTypeSearchTerm, setInterviewTypeSearchTerm] = useState('');
+  const [showInterviewTypeSuggestions, setShowInterviewTypeSuggestions] = useState(true);
   
   // Interview state
   const [isInterviewActive, setIsInterviewActive] = useState(false);
@@ -181,7 +183,8 @@ const MockInterview = () => {
     const baseMessage = getBaseVapiMessage(error);
 
     const byStatus = {
-      401: 'VAPI API key is invalid or expired. Please check your REACT_APP_VAPI_PUBLIC_KEY in frontend/.env file.',
+      401:
+        'VAPI rejected the browser key (401). Use the Public API key in frontend/.env as REACT_APP_VAPI_PUBLIC_KEY — not the Private key. The Private key belongs only in Backend/.env as VAPI_PRIVATE_KEY. Copy both from https://dashboard.vapi.ai → API Keys.',
       403: 'VAPI API key does not have permission. Please check your VAPI account permissions.',
       400: (msg) => `VAPI request error: ${msg}. Please check your assistant configuration.`
     };
@@ -457,7 +460,9 @@ CRITICAL INSTRUCTIONS - READ CAREFULLY:
         }
       }
 
-      let vapiPublicKey = (process.env.REACT_APP_VAPI_PUBLIC_KEY || '').trim();
+      let vapiPublicKey = (process.env.REACT_APP_VAPI_PUBLIC_KEY || '')
+        .trim()
+        .replace(/^["']|["']$/g, '');
       
       if (!vapiPublicKey) {
         throw new Error('VAPI Public Key not configured. Please add REACT_APP_VAPI_PUBLIC_KEY to your frontend/.env file.');
@@ -590,7 +595,10 @@ CRITICAL INSTRUCTIONS - READ CAREFULLY:
               throw new Error(`VAPI configuration error (400): ${errorMessage}. Please check your assistant configuration.`);
             }
           } else if (status === 401) {
-            throw new Error('VAPI authentication failed (401). Please verify your REACT_APP_VAPI_PUBLIC_KEY is correct.');
+            throw new Error(
+              'VAPI web call unauthorized (401). Put the Public API key in frontend/.env (REACT_APP_VAPI_PUBLIC_KEY). ' +
+                'Put the Private API key in Backend/.env (VAPI_PRIVATE_KEY). Do not swap them. Restart both servers after editing .env.'
+            );
           } else if (status === 400) {
             // Check if it's a credit-related error
             const errorLower = errorMessage.toLowerCase();
@@ -1223,6 +1231,24 @@ CRITICAL INSTRUCTIONS - READ CAREFULLY:
     </div>
   );
 
+  const roleEntries = Object.entries(jobRoles);
+  const normalizedSearchTerm = roleSearchTerm.trim().toLowerCase();
+  const selectedRoleNormalized = selectedRole.trim().toLowerCase();
+  const shouldFilterRoles = normalizedSearchTerm && normalizedSearchTerm !== selectedRoleNormalized;
+  const filteredRoleEntries = shouldFilterRoles
+    ? roleEntries.filter(([role]) => role.toLowerCase().includes(normalizedSearchTerm))
+    : roleEntries;
+  const normalizedInterviewTypeSearchTerm = interviewTypeSearchTerm.trim().toLowerCase();
+  const selectedInterviewTypeLabel =
+    interviewTypes.find((type) => type.value === selectedInterviewType)?.label || '';
+  const selectedInterviewTypeNormalized = selectedInterviewTypeLabel.trim().toLowerCase();
+  const shouldFilterInterviewTypes =
+    normalizedInterviewTypeSearchTerm &&
+    normalizedInterviewTypeSearchTerm !== selectedInterviewTypeNormalized;
+  const filteredInterviewTypes = shouldFilterInterviewTypes
+    ? interviewTypes.filter((type) => type.label.toLowerCase().includes(normalizedInterviewTypeSearchTerm))
+    : interviewTypes;
+
   // Show form
   if (showForm) {
     return (
@@ -1255,13 +1281,17 @@ CRITICAL INSTRUCTIONS - READ CAREFULLY:
                   onChange={(e) => setCandidateName(e.target.value)}
                   onKeyPress={(e) => {
                     if (e.key === 'Enter' && candidateName.trim()) {
+                      setShowRoleSuggestions(true);
                       setCurrentStep('role');
                     }
                   }}
                 />
                 <button
                   className="form-button primary"
-                  onClick={() => setCurrentStep('role')}
+                  onClick={() => {
+                    setShowRoleSuggestions(true);
+                    setCurrentStep('role');
+                  }}
                   disabled={!candidateName.trim()}
                 >
                   Next
@@ -1272,47 +1302,121 @@ CRITICAL INSTRUCTIONS - READ CAREFULLY:
             {currentStep === 'role' && (
               <div className="form-step">
                 <h3>2. Choose Your Job Role</h3>
-                <div className="role-options vertical-list">
-                  {Object.entries(jobRoles).map(([role, data]) => (
-                    <button
-                      key={role}
-                      className={`role-option ${selectedRole === role ? 'selected' : ''}`}
-                      onClick={() => {
-                        setSelectedRole(role);
-                        setCurrentStep('type');
-                      }}
-                      style={{ '--role-color': data.color }}
-                    >
-                      <div className="role-color-indicator"></div>
-                      <span>{role}</span>
-                    </button>
-                  ))}
+                <div className="role-search-bar-row">
+                  <input
+                    type="text"
+                    className="form-input role-search-input-pattern"
+                    placeholder="Search Job Role"
+                    value={roleSearchTerm}
+                    onFocus={() => setShowRoleSuggestions(true)}
+                    onChange={(e) => {
+                      setRoleSearchTerm(e.target.value);
+                      setShowRoleSuggestions(true);
+                    }}
+                  />
+                  <button
+                    type="button"
+                    className="role-search-button"
+                    onClick={() => setShowRoleSuggestions(true)}
+                  >
+                    Search
+                  </button>
                 </div>
-                <button
-                  className="form-button secondary"
-                  onClick={() => setCurrentStep('name')}
-                >
-                  <ArrowLeft size={16} />
-                  Back
-                </button>
+                {showRoleSuggestions && (
+                  <div className="job-roles-pattern-panel">
+                    <h4>Available Job Roles</h4>
+                    <div className="job-roles-chip-list">
+                      {filteredRoleEntries.map(([role, data]) => (
+                        <button
+                          key={`chip-${role}`}
+                          type="button"
+                          className={`job-role-chip ${selectedRole === role ? 'selected' : ''}`}
+                          style={{ '--role-color': data.color }}
+                          onClick={() => {
+                            setSelectedRole(role);
+                            setRoleSearchTerm(role);
+                            setShowRoleSuggestions(true);
+                          }}
+                        >
+                          {role}
+                        </button>
+                      ))}
+                    </div>
+                    {filteredRoleEntries.length === 0 && (
+                      <p className="job-roles-empty">No job role found.</p>
+                    )}
+                  </div>
+                )}
+                <div className="form-actions">
+                  <button
+                    className="form-button secondary"
+                    onClick={() => {
+                      setShowRoleSuggestions(false);
+                      setCurrentStep('name');
+                    }}
+                  >
+                    <ArrowLeft size={16} />
+                    Back
+                  </button>
+                  <button
+                    className="form-button primary"
+                    onClick={() => setCurrentStep('type')}
+                    disabled={!selectedRole}
+                  >
+                    Next
+                  </button>
+                </div>
               </div>
             )}
 
             {currentStep === 'type' && selectedRole && (
               <div className="form-step">
                 <h3>3. Select Interview Type</h3>
-                <div className="interview-type-options vertical-list">
-                  {interviewTypes.map((type) => (
-                    <button
-                      key={type.value}
-                      className={`interview-type-option ${type.value} ${selectedInterviewType === type.value ? 'selected' : ''}`}
-                      onClick={() => setSelectedInterviewType(type.value)}
-                    >
-                      {type.icon}
-                      <span>{type.label}</span>
-                    </button>
-                  ))}
+                <div className="role-search-bar-row">
+                  <input
+                    type="text"
+                    className="form-input role-search-input-pattern"
+                    placeholder="Search Interview Type"
+                    value={interviewTypeSearchTerm}
+                    onFocus={() => setShowInterviewTypeSuggestions(true)}
+                    onChange={(e) => {
+                      setInterviewTypeSearchTerm(e.target.value);
+                      setShowInterviewTypeSuggestions(true);
+                    }}
+                  />
+                  <button
+                    type="button"
+                    className="role-search-button"
+                    onClick={() => setShowInterviewTypeSuggestions(true)}
+                  >
+                    Search
+                  </button>
                 </div>
+
+                {showInterviewTypeSuggestions && (
+                  <div className="job-roles-pattern-panel">
+                    <h4>Available Interview Types</h4>
+                    <div className="job-roles-chip-list">
+                      {filteredInterviewTypes.map((type) => (
+                        <button
+                          key={type.value}
+                          type="button"
+                          className={`job-role-chip ${selectedInterviewType === type.value ? 'selected' : ''}`}
+                          onClick={() => {
+                            setSelectedInterviewType(type.value);
+                            setInterviewTypeSearchTerm(type.label);
+                            setShowInterviewTypeSuggestions(true);
+                          }}
+                        >
+                          {type.label}
+                        </button>
+                      ))}
+                    </div>
+                    {filteredInterviewTypes.length === 0 && (
+                      <p className="job-roles-empty">No interview type found.</p>
+                    )}
+                  </div>
+                )}
                 <div className="form-actions">
                   <button
                     className="form-button secondary"
@@ -1622,10 +1726,10 @@ CRITICAL INSTRUCTIONS - READ CAREFULLY:
               </button>
               <button
                 className="form-button secondary"
-                onClick={() => navigate('/skill-prep')}
+                onClick={resetInterview}
               >
                 <Play size={16} />
-                Start Skill Preparation
+                Start New Interview
               </button>
             </div>
           </div>

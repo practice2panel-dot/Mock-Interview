@@ -42,7 +42,7 @@ const Login = () => {
     const result = await login(email, password, rememberMe);
 
     if (result.success) {
-      navigate('/');
+      navigate('/mock-interview');
     } else {
       setError(result.message);
     }

@@ -1388,7 +1388,8 @@ After adding, wait 1-2 minutes, then restart backend and try again.''',
         id_info = id_token.verify_oauth2_token(
             credentials.id_token,
             google_requests.Request(),
-            GOOGLE_CLIENT_ID
+            GOOGLE_CLIENT_ID,
+            clock_skew_in_seconds=10,
         )
         
         google_id = id_info.get('sub')

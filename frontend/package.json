@@ -5,10 +5,6 @@
   "private": true,
   "dependencies": {
     "@vapi-ai/web": "^1.4.2",
-    "axios": "^1.6.0",
-    "framer-motion": "^10.16.4",
-    "html2canvas": "^1.4.1",
-    "jspdf": "^2.5.1",
     "lucide-react": "^0.263.1",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
@@ -24,7 +20,7 @@
     "test": "react-scripts test",
     "eject": "react-scripts eject",
     "start-backend": "cd ../Backend && python start_server.py",
-    "setup-backend": "cd ../Backend && pip install -r requirements.txt && python create_sample_tables.py",
+    "setup-backend": "cd ../Backend && pip install -r requirements.txt",
     "dev": "concurrently \"npm run start-backend\" \"npm start\""
   },
   "eslintConfig": {

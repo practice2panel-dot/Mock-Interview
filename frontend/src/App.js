@@ -2,12 +2,7 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import Navbar from './components/Navbar';
-import Layout from './components/Layout';
-import Home from './components/Home';
-import Dashboard from './components/Dashboard';
-import SkillPrep from './components/SkillPrep';
 import MockInterview from './components/MockInterview';
-import AIAssistant from './components/AIAssistant';
 import Login from './components/auth/Login';
 import Signup from './components/auth/Signup';
 import VerifyEmail from './components/auth/VerifyEmail';
@@ -32,7 +27,7 @@ const ProtectedRoute = ({ children }) => {
   return authenticated ? children : <Navigate to="/login" replace />;
 };
 
-// Public Route Component (redirects to home if already logged in)
+// Public Route Component (redirects to mock interview if already logged in)
 const PublicRoute = ({ children }) => {
   const { authenticated, loading } = useAuth();
 
@@ -44,7 +39,7 @@ const PublicRoute = ({ children }) => {
     );
   }
 
-  return authenticated ? <Navigate to="/" replace /> : children;
+  return authenticated ? <Navigate to="/mock-interview" replace /> : children;
 };
 
 function App() {
@@ -58,36 +53,15 @@ function App() {
       >
         <div className="App">
           <Routes>
-            <Route path="/" element={<><Navbar /><Home /></>} />
-            <Route
-              path="/dashboard"
-              element={
-                <ProtectedRoute>
-                  <Layout><Dashboard /></Layout>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/skill-prep"
-              element={
-                <ProtectedRoute>
-                  <Layout><SkillPrep /></Layout>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/interview-prep"
-              element={
-                <ProtectedRoute>
-                  <Navigate to="/skill-prep" replace />
-                </ProtectedRoute>
-              }
-            />
+            <Route path="/" element={<Navigate to="/mock-interview" replace />} />
             <Route
               path="/mock-interview"
               element={
                 <ProtectedRoute>
-                  <Layout><MockInterview /></Layout>
+                  <>
+                    <Navbar />
+                    <MockInterview />
+                  </>
                 </ProtectedRoute>
               }
             />
@@ -95,15 +69,10 @@ function App() {
               path="/profile"
               element={
                 <ProtectedRoute>
-                  <Layout><Profile /></Layout>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/ai-assistant"
-              element={
-                <ProtectedRoute>
-                  <Layout><AIAssistant /></Layout>
+                  <>
+                    <Navbar />
+                    <Profile />
+                  </>
                 </ProtectedRoute>
               }
             />
@@ -127,7 +96,7 @@ function App() {
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/auth/google/callback" element={<GoogleCallback />} />
-            <Route path="*" element={<Navigate to="/" replace />} />
+            <Route path="*" element={<Navigate to="/mock-interview" replace />} />
           </Routes>
         </div>
       </Router>

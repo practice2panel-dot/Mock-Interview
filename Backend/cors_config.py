@@ -78,14 +78,16 @@ def get_allowed_origins():
     # Single frontend URL (Render + Vercel typical setup)
     add(os.getenv("FRONTEND_URL", "").strip())
 
-    # Local development defaults when nothing else is set
-    if not origins:
-        add("http://localhost:3000")
-        add("http://127.0.0.1:3000")
-    else:
-        # Still allow local dev when FRONTEND_URL is set (optional convenience)
-        if os.getenv("ALLOW_LOCALHOST_CORS", "").lower() in ("1", "true", "yes"):
-            add("http://localhost:3000")
-            add("http://127.0.0.1:3000")
+    # Always allow common local frontend origins to keep local development stable
+    # even when FRONTEND_URL points to a deployed domain.
+    add("http://localhost:3000")
+    add("http://127.0.0.1:3000")
+
+    # Optional extra local ports (when needed)
+    if os.getenv("ALLOW_LOCALHOST_CORS", "").lower() in ("1", "true", "yes"):
+        add("http://localhost:3001")
+        add("http://127.0.0.1:3001")
+        add("http://localhost:3002")
+        add("http://127.0.0.1:3002")
 
     return origins

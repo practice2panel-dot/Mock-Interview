@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { Menu, X, Brain, User, BookOpen, LogOut, Settings, Video, BarChart3 } from 'lucide-react';
+import { Menu, X, Brain, User, LogOut, Settings, Video } from 'lucide-react';
 import './Navbar.css';
 
 const Navbar = () => {
@@ -31,16 +31,13 @@ const Navbar = () => {
 
   const handleNavClick = (path, e) => {
       // If user is not authenticated and trying to access protected routes
-      if (!authenticated && path !== '/') {
+      if (!authenticated && path !== '/login' && path !== '/signup') {
       e.preventDefault();
       navigate('/signup');
     }
   };
 
   const navItems = [
-    { path: '/', label: 'Home', icon: <Brain size={20} /> },
-    { path: '/dashboard', label: 'Dashboard', icon: <BarChart3 size={20} /> },
-    { path: '/skill-prep', label: 'Skill Prep', icon: <BookOpen size={20} /> },
     { path: '/mock-interview', label: 'Mock Interview', icon: <Video size={20} /> },
   ];
 
@@ -61,7 +58,7 @@ const Navbar = () => {
   return (
     <nav className="navbar">
       <div className="navbar-container">
-        <Link to="/" className="navbar-logo" onClick={closeMenu}>
+        <Link to="/mock-interview" className="navbar-logo" onClick={closeMenu}>
           <Brain className="logo-icon" />
           <span>Practice2Panel</span>
         </Link>

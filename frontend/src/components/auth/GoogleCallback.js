@@ -69,7 +69,7 @@ const GoogleCallback = () => {
           ]);
 
           if (isAuthenticated) {
-            navigate('/');
+            navigate('/mock-interview');
           } else {
             navigate('/login', {
               state: {
