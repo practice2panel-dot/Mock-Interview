@@ -1256,9 +1256,6 @@ CRITICAL INSTRUCTIONS - READ CAREFULLY:
         <div className="mock-interview-container">
           <div className="mock-interview-header">
             <h1 className="section-title">Mock Interview</h1>
-            <p className="section-subtitle">
-              Practice with a real AI recruiter using voice conversation
-            </p>
           </div>
 
           <div className="mock-interview-form card">
