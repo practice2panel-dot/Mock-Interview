@@ -213,7 +213,7 @@
 
 .role-search-bar-row {
   display: grid;
-  grid-template-columns: 1fr auto;
+  grid-template-columns: 1fr;
   gap: 0.65rem;
   align-items: center;
 }

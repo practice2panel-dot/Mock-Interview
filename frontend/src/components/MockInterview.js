@@ -1314,13 +1314,6 @@ CRITICAL INSTRUCTIONS - READ CAREFULLY:
                       setShowRoleSuggestions(true);
                     }}
                   />
-                  <button
-                    type="button"
-                    className="role-search-button"
-                    onClick={() => setShowRoleSuggestions(true)}
-                  >
-                    Search
-                  </button>
                 </div>
                 {showRoleSuggestions && (
                   <div className="job-roles-pattern-panel">
@@ -1384,13 +1377,6 @@ CRITICAL INSTRUCTIONS - READ CAREFULLY:
                       setShowInterviewTypeSuggestions(true);
                     }}
                   />
-                  <button
-                    type="button"
-                    className="role-search-button"
-                    onClick={() => setShowInterviewTypeSuggestions(true)}
-                  >
-                    Search
-                  </button>
                 </div>
 
                 {showInterviewTypeSuggestions && (
