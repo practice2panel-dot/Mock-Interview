@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { 
   ArrowLeft, 
   Mic, 
@@ -263,7 +263,7 @@ const MockInterview = () => {
 
   // Fetch questions for all skills and cache by role+interview type.
   // This avoids waiting on the same DB query when users retry.
-  const fetchQuestions = async ({ showErrors = true } = {}) => {
+  const fetchQuestions = useCallback(async ({ showErrors = true } = {}) => {
     try {
       const cacheKey = getQuestionsCacheKey(selectedRole, selectedInterviewType);
       if (questionsCacheRef.current.has(cacheKey)) {
@@ -327,13 +327,13 @@ const MockInterview = () => {
       }
       return { ok: false, questions: [] };
     }
-  };
+  }, [selectedRole, selectedInterviewType]);
 
   // Prefetch as soon as role+type are selected to reduce start latency.
   useEffect(() => {
     if (!selectedRole || !selectedInterviewType) return;
     fetchQuestions({ showErrors: false });
-  }, [selectedRole, selectedInterviewType]);
+  }, [selectedRole, selectedInterviewType, fetchQuestions]);
 
   // Start VAPI call using Web SDK (no phone number required)
   const startInterview = async () => {
