@@ -219,11 +219,32 @@ const MockInterview = () => {
   const getBaseVapiMessage = (error) => {
     const nested = error?.error;
     if (typeof nested === 'object' && nested?.message) return nested.message;
+    if (typeof nested === 'object' && nested?.error) return nested.error;
+    if (typeof nested === 'object' && nested?.details) return nested.details;
     if (error?.message) return error.message;
     if (error?.response?.data?.message) return error.response.data.message;
+    if (error?.response?.data?.error) return error.response.data.error;
+    if (typeof error?.response?.data === 'string') return error.response.data;
     if (error?.response?.statusText) return error.response.statusText;
     if (typeof error === 'string') return error;
-    if (error?.toString) return error.toString();
+
+    // Avoid opaque "[object Object]" and surface useful payload fields.
+    if (error && typeof error === 'object') {
+      try {
+        const serialized = JSON.stringify(error);
+        if (serialized && serialized !== '{}' && serialized !== '"[object Object]"') {
+          return serialized;
+        }
+      } catch (_) {
+        /* ignore JSON stringify failures */
+      }
+    }
+
+    const fallback = error?.toString?.();
+    if (fallback && fallback !== '[object Object]') {
+      return fallback;
+    }
+
     return 'Unknown error';
   };
 
