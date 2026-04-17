@@ -125,6 +125,18 @@ code {
   user-select: none;
 }
 
+/* Keep button label readable and consistent on hover */
+button:hover:not(:disabled),
+.btn:hover,
+.form-button:hover:not(:disabled),
+.auth-button:hover:not(:disabled),
+.google-button:hover:not(:disabled),
+.tab-button:hover,
+.logout-button:hover,
+.resend-button:hover:not(:disabled) {
+  color: #000 !important;
+}
+
 
 .btn-primary {
   background: var(--accent-color);

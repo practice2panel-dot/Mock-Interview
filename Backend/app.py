@@ -297,7 +297,7 @@ def get_assistant_config():
             "voice": {"provider": "vapi", "voiceId": "Elliot"},
             "firstMessage": (
                 f"Hello {candidate_name}, thank you for taking the time to interview with us today. "
-                "I'm excited to learn more about your background and experience. Let's begin!"
+                "Let's begin."
             ),
         }
 

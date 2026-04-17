@@ -1,8 +1,9 @@
-import React, { createContext, useState, useEffect, useContext, useCallback } from 'react';
+import React, { createContext, useState, useEffect, useContext, useCallback, useRef } from 'react';
 import { API_BASE_URL } from '../config';
 
 /** Abort auth check if the backend is unreachable (wrong URL, sleeping host, hung proxy). */
 const AUTH_CHECK_TIMEOUT_MS = 20000;
+const AUTH_HINT_KEY = 'mockinterview_auth_hint';
 
 const AuthContext = createContext();
 
@@ -15,11 +16,39 @@ export const useAuth = () => {
 };
 
 export const AuthProvider = ({ children }) => {
+  const hasStoredAuthHint = () => {
+    try {
+      return window.localStorage.getItem(AUTH_HINT_KEY) === '1';
+    } catch {
+      return false;
+    }
+  };
+
+  const persistAuthHint = () => {
+    try {
+      window.localStorage.setItem(AUTH_HINT_KEY, '1');
+    } catch {
+      /* ignore storage errors */
+    }
+  };
+
+  const clearAuthHint = () => {
+    try {
+      window.localStorage.removeItem(AUTH_HINT_KEY);
+    } catch {
+      /* ignore storage errors */
+    }
+  };
+
+  const initialHasAuthHintRef = useRef(hasStoredAuthHint());
   const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(initialHasAuthHintRef.current);
   const [authenticated, setAuthenticated] = useState(false);
 
-  const checkAuth = useCallback(async () => {
+  const checkAuth = useCallback(async ({ silent = false } = {}) => {
+    if (!silent) {
+      setLoading(true);
+    }
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), AUTH_CHECK_TIMEOUT_MS);
 
@@ -40,11 +69,13 @@ export const AuthProvider = ({ children }) => {
       if (data.success && data.authenticated) {
         setUser(data.user);
         setAuthenticated(true);
+        persistAuthHint();
         return true;
       }
 
       setUser(null);
       setAuthenticated(false);
+      clearAuthHint();
       return false;
     } catch (error) {
       if (error.name === 'AbortError') {
@@ -57,6 +88,7 @@ export const AuthProvider = ({ children }) => {
       }
       setUser(null);
       setAuthenticated(false);
+      clearAuthHint();
       return false;
     } finally {
       clearTimeout(timeoutId);
@@ -66,7 +98,7 @@ export const AuthProvider = ({ children }) => {
 
   // Check authentication status on mount
   useEffect(() => {
-    checkAuth();
+    checkAuth({ silent: !initialHasAuthHintRef.current });
   }, [checkAuth]);
 
   const login = async (email, password, rememberMe = false) => {
@@ -85,6 +117,7 @@ export const AuthProvider = ({ children }) => {
       if (data.success) {
         setUser(data.user);
         setAuthenticated(true);
+        persistAuthHint();
         return { success: true, message: data.message };
       } else {
         return { success: false, message: data.message };
@@ -258,6 +291,7 @@ export const AuthProvider = ({ children }) => {
     } finally {
       setUser(null);
       setAuthenticated(false);
+      clearAuthHint();
     }
   };
 

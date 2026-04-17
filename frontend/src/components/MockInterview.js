@@ -54,6 +54,8 @@ const MockInterview = () => {
   const conversationHistoryRef = useRef([]);
   const transcriptAccumulatorRef = useRef({ assistant: '', user: '' });
   const lastStoredMessageRef = useRef({ assistant: '', user: '' });
+  const questionsCacheRef = useRef(new Map());
+  const questionsPendingRef = useRef(new Map());
   
   // Feedback state
   const [showFeedback, setShowFeedback] = useState(false);
@@ -161,6 +163,53 @@ const MockInterview = () => {
     return `Microphone access error: ${base}`;
   };
 
+  const applyVapiMuteState = async (nextMuted) => {
+    const vapi = vapiRef.current;
+    if (!vapi) {
+      throw new Error('No active interview call');
+    }
+
+    // SDK compatibility: method names can vary by version.
+    if (typeof vapi.setMuted === 'function') {
+      await vapi.setMuted(nextMuted);
+      return;
+    }
+    if (typeof vapi.setMicrophoneMuted === 'function') {
+      await vapi.setMicrophoneMuted(nextMuted);
+      return;
+    }
+    if (typeof vapi.setMicMuted === 'function') {
+      await vapi.setMicMuted(nextMuted);
+      return;
+    }
+    if (nextMuted && typeof vapi.mute === 'function') {
+      await vapi.mute();
+      return;
+    }
+    if (!nextMuted && typeof vapi.unmute === 'function') {
+      await vapi.unmute();
+      return;
+    }
+
+    throw new Error('Mute control is unavailable in the current Vapi SDK');
+  };
+
+  const handleToggleMute = async () => {
+    if (!isCallActive || !vapiRef.current) {
+      setError('Mute is available only during an active interview call.');
+      return;
+    }
+
+    const nextMuted = !isMuted;
+    try {
+      await applyVapiMuteState(nextMuted);
+      setIsMuted(nextMuted);
+    } catch (muteError) {
+      console.error('Mute toggle failed:', muteError);
+      setError(`Failed to ${nextMuted ? 'mute' : 'unmute'} microphone: ${muteError.message || 'Unknown error'}`);
+    }
+  };
+
   const getVapiStatusCode = (error) =>
     error?.status ||
     error?.statusCode ||
@@ -210,55 +259,81 @@ const MockInterview = () => {
   ];
 
 
-  // Fetch questions for all skills. Returns questions in the same tick so callers can
-  // build prompts without relying on React state that would still be stale until re-render.
-  const fetchQuestions = async () => {
+  const getQuestionsCacheKey = (role, type) => `${role || ''}::${type || ''}`;
+
+  // Fetch questions for all skills and cache by role+interview type.
+  // This avoids waiting on the same DB query when users retry.
+  const fetchQuestions = async ({ showErrors = true } = {}) => {
     try {
-      setIsLoading(true);
-      setError('');
+      const cacheKey = getQuestionsCacheKey(selectedRole, selectedInterviewType);
+      if (questionsCacheRef.current.has(cacheKey)) {
+        return { ok: true, questions: questionsCacheRef.current.get(cacheKey) };
+      }
+
+      if (questionsPendingRef.current.has(cacheKey)) {
+        return await questionsPendingRef.current.get(cacheKey);
+      }
 
       const roleConfig = jobRoles[selectedRole];
       const skillsForRole = roleConfig?.skills ?? [];
 
-      const response = await fetch(`${API_BASE_URL}/api/mock-interview/questions`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          job_role: selectedRole,
-          interview_type: selectedInterviewType,
-          // Same skill labels as Skill Prep → same DB tables ({type}_python, etc.)
-          skills: skillsForRole
-        })
-      });
+      const requestPromise = (async () => {
+        const response = await fetch(`${API_BASE_URL}/api/mock-interview/questions`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            job_role: selectedRole,
+            interview_type: selectedInterviewType,
+            // Same skill labels as Skill Prep -> same DB tables ({type}_python, etc.)
+            skills: skillsForRole
+          })
+        });
 
-      let data = {};
-      try {
-        data = await response.json();
-      } catch (_) {
-        /* non-JSON response */
-      }
+        let data = {};
+        try {
+          data = await response.json();
+        } catch (_) {
+          /* non-JSON response */
+        }
 
-      if (!response.ok) {
-        setError(data.message || `Failed to fetch questions (${response.status})`);
+        if (!response.ok) {
+          if (showErrors) {
+            setError(data.message || `Failed to fetch questions (${response.status})`);
+          }
+          return { ok: false, questions: [] };
+        }
+
+        if (data.success && Array.isArray(data.questions) && data.questions.length > 0) {
+          questionsCacheRef.current.set(cacheKey, data.questions);
+          return { ok: true, questions: data.questions };
+        }
+
+        if (showErrors) {
+          setError(data.message || 'No questions available for this role and interview type.');
+        }
         return { ok: false, questions: [] };
-      }
+      })();
 
-      if (data.success && Array.isArray(data.questions) && data.questions.length > 0) {
-        return { ok: true, questions: data.questions };
-      }
-
-      setError(data.message || 'No questions available for this role and interview type.');
-      return { ok: false, questions: [] };
+      questionsPendingRef.current.set(cacheKey, requestPromise);
+      const result = await requestPromise;
+      questionsPendingRef.current.delete(cacheKey);
+      return result;
     } catch (error) {
       console.error('Error fetching questions:', error);
-      setError('Failed to load questions. Please try again.');
+      if (showErrors) {
+        setError('Failed to load questions. Please try again.');
+      }
       return { ok: false, questions: [] };
-    } finally {
-      setIsLoading(false);
     }
   };
+
+  // Prefetch as soon as role+type are selected to reduce start latency.
+  useEffect(() => {
+    if (!selectedRole || !selectedInterviewType) return;
+    fetchQuestions({ showErrors: false });
+  }, [selectedRole, selectedInterviewType]);
 
   // Start VAPI call using Web SDK (no phone number required)
   const startInterview = async () => {
@@ -267,16 +342,29 @@ const MockInterview = () => {
       return;
     }
 
-
-    // Fetch questions first (use returned array — state is still stale until next render)
-    const { ok: questionsOk, questions: questionsForPrompt } = await fetchQuestions();
-    if (!questionsOk || !questionsForPrompt?.length) {
-      return;
-    }
-
     try {
       setIsLoading(true);
       setError('');
+      setCallStatus('connecting');
+
+      // Start mic permission request immediately in parallel with backend calls.
+      const microphonePermissionPromise = navigator.mediaDevices
+        .getUserMedia({ audio: true })
+        .then((stream) => {
+          stream.getTracks().forEach((track) => track.stop());
+          return true;
+        })
+        .catch((micError) => {
+          throw new Error(getMicErrorMessage(micError));
+        });
+
+      // Fetch questions (uses cache/prefetch when available).
+      const { ok: questionsOk, questions: questionsForPrompt } = await fetchQuestions({ showErrors: true });
+      if (!questionsOk || !questionsForPrompt?.length) {
+        setIsLoading(false);
+        setCallStatus('idle');
+        return;
+      }
 
       // Build system message for VAPI
       const skills = jobRoles[selectedRole].skills.join(', ');
@@ -420,8 +508,6 @@ CRITICAL INSTRUCTIONS - READ CAREFULLY:
 12. Remember: ONE question per message. Wait for complete answer. Then next question. Ask 3 per skill, keep total interview about 15 minutes, then end with a proper closing message.`;
 
       // Get assistant configuration from backend
-      setCallStatus('connecting');
-      
       const configResponse = await fetch(`${API_BASE_URL}/api/mock-interview/get-assistant-config`, {
         method: 'POST',
         headers: {
@@ -472,13 +558,7 @@ CRITICAL INSTRUCTIONS - READ CAREFULLY:
         console.warn('VAPI Public Key seems too short. Please verify it\'s correct.');
       }
 
-      // Request microphone permissions
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        stream.getTracks().forEach(track => track.stop());
-      } catch (micError) {
-        throw new Error(getMicErrorMessage(micError));
-      }
+      await microphonePermissionPromise;
 
       const Vapi = VapiSDK.default || VapiSDK;
       
@@ -623,6 +703,7 @@ CRITICAL INSTRUCTIONS - READ CAREFULLY:
         setCallStatus('connected');
         setIsCallActive(true);
         setIsInterviewActive(true);
+        setIsMuted(false);
         setIsLoading(false);
         setShowForm(false);
         
@@ -821,6 +902,7 @@ CRITICAL INSTRUCTIONS - READ CAREFULLY:
           setCallStatus('ended');
           setIsCallActive(false);
           setIsInterviewActive(false);
+          setIsMuted(false);
           setActiveSpeaker(null);
           clearSpeakerTimeouts();
           
@@ -1113,6 +1195,7 @@ CRITICAL INSTRUCTIONS - READ CAREFULLY:
     setCallStatus('ended');
     setIsCallActive(false);
     setIsInterviewActive(false);
+    setIsMuted(false);
     
     // Generate feedback when manually ending call
     await generateFeedback();
@@ -1138,6 +1221,7 @@ CRITICAL INSTRUCTIONS - READ CAREFULLY:
     setCurrentStep('name');
     setIsInterviewActive(false);
     setIsCallActive(false);
+    setIsMuted(false);
     setConversationHistory([]);
     conversationHistoryRef.current = [];
     transcriptAccumulatorRef.current = { assistant: '', user: '' };
@@ -1173,6 +1257,7 @@ CRITICAL INSTRUCTIONS - READ CAREFULLY:
     setInterviewTimer(0);
     setIsInterviewActive(false);
     setIsCallActive(false);
+    setIsMuted(false);
     setCallStatus('idle');
     setError('');
     setIsGeneratingFeedback(false);
@@ -1834,8 +1919,9 @@ CRITICAL INSTRUCTIONS - READ CAREFULLY:
               <div className="call-controls">
                 <button
                   className={`control-button mic-button ${isMuted ? 'muted' : ''}`}
-                  onClick={() => setIsMuted(!isMuted)}
+                  onClick={handleToggleMute}
                   title={isMuted ? 'Unmute' : 'Mute'}
+                  disabled={!isCallActive}
                 >
                   {isMuted ? <MicOff size={24} /> : <Mic size={24} />}
                 </button>
